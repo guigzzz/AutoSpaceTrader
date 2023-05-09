@@ -34,22 +34,14 @@ async fn main() {
         .data
         .iter()
         .filter(|s| s.frame.symbol == Symbol::Drone)
-        .map(|s| {
-            (
-                s.registration.name.to_owned(),
-                s.nav.to_owned(),
-                s.cargo.to_owned(),
-                s.fuel.to_owned(),
-            )
-        })
         .collect();
 
     for d in &drones {
-        dbg!((&d.0, &d.1));
+        dbg!((&d.symbol, &d.nav));
     }
 
     for d in &drones {
-        let ship_name = d.0.to_owned();
+        let ship_name = d.symbol.to_owned();
         let configuration = configuration.to_owned();
 
         tokio::spawn(async move {
