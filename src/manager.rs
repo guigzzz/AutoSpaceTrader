@@ -13,10 +13,11 @@ use crate::{client::Client, configuration::ConfigBuilder};
 pub struct Manager {
     configuration: Configuration,
     systems: HashMap<String, System>,
+    log_context: String,
 }
 
 impl Manager {
-    pub async fn new() -> Self {
+    pub async fn new(log_context: &str) -> Self {
         let configuration = ConfigBuilder::new_config();
 
         let systems: HashMap<String, System> = systems_api::get_systems_all(&configuration)
@@ -26,11 +27,15 @@ impl Manager {
             .map(|s| (s.symbol.to_owned(), s.to_owned()))
             .collect();
 
-        println!("[MANAGER] Found {} systems", systems.len());
+        println!(
+            "[{log_context}] Manager Init - Found {} systems",
+            systems.len()
+        );
 
         Self {
             configuration,
             systems,
+            log_context: log_context.to_owned(),
         }
     }
 
@@ -45,15 +50,18 @@ impl Manager {
         let ship = self
             .purchase_ship(system_symbol, spacedust::models::ShipType::MiningDrone)
             .await;
-        println!("[MANAGER] Purchased ship: {}", ship.symbol);
+        println!(
+            "[{}] Manager - Purchased ship: {}",
+            self.log_context, ship.symbol
+        );
 
         let asteroid_waypoint = self
             .find_waypoint_for_type(system_symbol, WaypointType::AsteroidField)
             .await
             .unwrap();
         println!(
-            "[MANAGER] Found AsteroidField waypoint: {}",
-            asteroid_waypoint.symbol
+            "[{}] Manager - Found AsteroidField waypoint: {}",
+            self.log_context, asteroid_waypoint.symbol
         );
         client
             .navigate(ship.symbol.as_str(), asteroid_waypoint.symbol.as_str())

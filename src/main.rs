@@ -46,7 +46,7 @@ async fn main() {
     }
 
     tokio::spawn(async {
-        let manager = Manager::new().await;
+        let manager = Manager::new("BUYER").await;
         println!("[BUYER] Init manager done");
 
         let client = Client::new();
@@ -70,6 +70,8 @@ async fn main() {
                 manager
                     .buy_ship_and_send_mining(&client, current_system.as_str())
                     .await
+            } else {
+                println!("[BUYER] Not enough funds");
             }
         }
     });
