@@ -1,24 +1,20 @@
-use std::{env, time::Duration};
+use std::time::Duration;
 
-use dotenv::dotenv;
-use reqwest::ClientBuilder;
+use chrono::{Date, DateTime, Utc};
 use spacedust::{
     apis::{
         agents_api,
         configuration::Configuration,
         fleet_api::{self as fleet},
-        systems_api, Error,
+        Error,
     },
-    models::{
-        Agent, ExtractResourcesRequest, GetSystemWaypoints200Response, GetWaypoint200Response,
-        SellCargoRequest, Ship, Waypoint,
-    },
+    models::{Agent, ExtractResourcesRequest, NavigateShipRequest, SellCargoRequest, Ship},
 };
 
 use serde::Deserialize;
 use serde_repr::Deserialize_repr;
 
-use crate::limiter::RateLimiter;
+use crate::configuration::ConfigBuilder;
 
 #[repr(u16)]
 #[derive(Debug, PartialEq, Deserialize_repr)]
@@ -70,19 +66,9 @@ pub struct Client {
 
 impl Client {
     pub fn new() -> Self {
-        dotenv().ok();
-
-        let client = reqwest_middleware::ClientBuilder::new(ClientBuilder::new().build().unwrap())
-            .with(RateLimiter::new())
-            .build();
-
-        let configuration = Configuration {
-            bearer_access_token: Some(env::var("TOKEN").unwrap()),
-            client,
-            ..Default::default()
-        };
-
-        Self { configuration }
+        Self {
+            configuration: ConfigBuilder::new_config(),
+        }
     }
 
     pub async fn get_my_agent(&self) -> Box<Agent> {
@@ -99,10 +85,39 @@ impl Client {
             .data
     }
 
+    pub async fn get_ship(&self, ship_symbol: &str) -> Box<Ship> {
+        fleet::get_my_ship(&self.configuration, ship_symbol)
+            .await
+            .unwrap()
+            .data
+    }
+
     pub async fn dock_ship(&self, ship_symbol: &str) {
         fleet::dock_ship(&self.configuration, ship_symbol, 0.)
             .await
             .unwrap();
+    }
+
+    pub async fn navigate(&self, ship_symbol: &str, waypoint_symbol: &str) {
+        let resp = fleet::navigate_ship(
+            &self.configuration,
+            ship_symbol,
+            Some(NavigateShipRequest::new(waypoint_symbol.to_owned())),
+        )
+        .await
+        .unwrap()
+        .data;
+
+        dbg!(&resp);
+
+        let route = resp.nav.route;
+        let departure = DateTime::parse_from_rfc3339(route.arrival.as_str()).unwrap();
+        let arrival = DateTime::parse_from_rfc3339(route.departure_time.as_str()).unwrap();
+
+        let eta = arrival - departure;
+
+        println!("[{ship_symbol}] Travelling to {waypoint_symbol}, sleeping {eta}");
+        tokio::time::sleep(Duration::from_secs(eta.num_seconds() as u64)).await;
     }
 
     pub async fn orbit_ship(&self, ship_symbol: &str) {

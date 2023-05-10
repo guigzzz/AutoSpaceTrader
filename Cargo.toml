@@ -8,7 +8,9 @@ edition = "2021"
 [dependencies]
 async-std = "1.12.0"
 async-trait = "0.1.68"
+chrono = "0.4.24"
 dotenv = "0.15.0"
+futures = "0.3.28"
 reqwest = "0.11.17"
 reqwest-middleware = "0.2.1"
 serde = { version = "1.0.162", features = ["derive"] }

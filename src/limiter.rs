@@ -15,7 +15,7 @@ pub struct RateLimiter {
 }
 
 const RATE_TTL: Duration = Duration::from_secs(1);
-const RPS: usize = 2;
+const RPS: usize = 1;
 
 impl RateLimiter {
     pub fn new() -> Self {
