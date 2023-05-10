@@ -15,7 +15,6 @@ async fn main() {
     let ships = client.get_my_ships().await;
 
     let drones: Vec<_> = ships
-        .data
         .iter()
         .filter(|s| s.frame.symbol == Symbol::Drone)
         .collect();
@@ -52,6 +51,6 @@ async fn main() {
         stream.tick().await;
 
         let m = client.get_my_agent().await;
-        println!("[MAIN] credits={}", m.data.credits)
+        println!("[MAIN] credits={}", m.credits)
     }
 }

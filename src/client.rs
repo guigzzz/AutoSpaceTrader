@@ -7,10 +7,11 @@ use spacedust::{
         agents_api,
         configuration::Configuration,
         fleet_api::{self as fleet},
-        Error,
+        systems_api, Error,
     },
     models::{
-        ExtractResourcesRequest, GetMyAgent200Response, GetMyShips200Response, SellCargoRequest,
+        Agent, ExtractResourcesRequest, GetSystemWaypoints200Response, GetWaypoint200Response,
+        SellCargoRequest, Ship, Waypoint,
     },
 };
 
@@ -31,7 +32,7 @@ pub enum ErrorCode {
 #[serde(rename_all = "camelCase")]
 pub enum ExtractResourceError {
     Cooldown { cooldown: CoolDownErrorInner },
-    Cargo { ship_symbol: String },
+    Cargo(CargoErrorInner),
 }
 
 #[derive(Deserialize, Debug)]
@@ -57,6 +58,12 @@ pub struct CoolDownErrorInner {
     total_seconds: u64,
 }
 
+#[derive(Deserialize, Debug, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct CargoErrorInner {
+    ship_symbol: String,
+}
+
 pub struct Client {
     configuration: Configuration,
 }
@@ -78,14 +85,18 @@ impl Client {
         Self { configuration }
     }
 
-    pub async fn get_my_agent(&self) -> GetMyAgent200Response {
-        agents_api::get_my_agent(&self.configuration).await.unwrap()
+    pub async fn get_my_agent(&self) -> Box<Agent> {
+        agents_api::get_my_agent(&self.configuration)
+            .await
+            .unwrap()
+            .data
     }
 
-    pub async fn get_my_ships(&self) -> GetMyShips200Response {
+    pub async fn get_my_ships(&self) -> Vec<Ship> {
         fleet::get_my_ships(&self.configuration, None, None)
             .await
             .unwrap()
+            .data
     }
 
     pub async fn dock_ship(&self, ship_symbol: &str) {
@@ -167,6 +178,37 @@ impl Client {
                     _ => panic!(),
                 },
             };
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn deserialise_cargo() {
+        let str = "{\"error\":{\"message\":\"Failed of available space.\",\"code\":4228,\"data\":{\"shipSymbol\":\"MXZ-2\"}}}";
+
+        let err: GenericError<ExtractResourceError> = serde_json::from_str(str).unwrap();
+
+        match err.error.data {
+            ExtractResourceError::Cargo { .. } => (),
+            ExtractResourceError::Cooldown { .. } => panic!(),
+        }
+    }
+
+    #[test]
+    fn deserialise_cooldown() {
+        let str = "{\"error\":{\"message\":\"cooldown.\",\"code\":4000,\"data\":{\"cooldown\":{\"shipSymbol\":\"MXZ-2\", \"expiration\":\"bla\", \"remainingSeconds\": 5, \"totalSeconds\": 10}}}}";
+
+        let err: GenericError<ExtractResourceError> = serde_json::from_str(str).unwrap();
+
+        match err.error.data {
+            ExtractResourceError::Cargo { .. } => panic!(),
+            ExtractResourceError::Cooldown { cooldown, .. } => {
+                assert_eq!(cooldown.remaining_seconds, 5);
+            }
         }
     }
 }
