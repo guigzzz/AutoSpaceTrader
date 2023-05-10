@@ -1,34 +1,17 @@
-mod ship;
+mod client;
 
 use std::time::Duration;
 
-use ship::Ship;
+use client::Client;
 
-use spacedust::{
-    apis::{
-        agents_api::{self as agents},
-        configuration::Configuration,
-        fleet_api::{self as fleet},
-    },
-    models::ship_frame::Symbol,
-};
+use spacedust::models::ship_frame::Symbol;
 use tokio::time::interval;
-
-use dotenv::dotenv;
-use std::env;
 
 #[tokio::main]
 async fn main() {
-    dotenv().ok();
+    let client = Client::new();
 
-    let configuration = Configuration {
-        bearer_access_token: Some(env::var("TOKEN").unwrap()),
-        ..Default::default()
-    };
-
-    let ships = fleet::get_my_ships(&configuration, None, None)
-        .await
-        .unwrap();
+    let ships = client.get_my_ships().await;
 
     let drones: Vec<_> = ships
         .data
@@ -41,26 +24,22 @@ async fn main() {
     }
 
     for d in &drones {
-        let ship_name = d.symbol.to_owned();
-        let configuration = configuration.to_owned();
+        let ship_symbol = d.symbol.to_owned();
+        let client = Client::new();
 
         tokio::spawn(async move {
             loop {
-                println!("[{ship_name}] docking");
-                fleet::dock_ship(&configuration, &ship_name, 0.)
-                    .await
-                    .unwrap();
+                println!("[{ship_symbol}] docking");
+                client.dock_ship(&ship_symbol).await;
 
-                println!("[{ship_name}] emptying");
-                Ship::sell_all(&configuration, &ship_name).await;
+                println!("[{ship_symbol}] emptying");
+                client.sell_all(&ship_symbol).await;
 
-                println!("[{ship_name}] orbit");
-                fleet::orbit_ship(&configuration, &ship_name, 0)
-                    .await
-                    .unwrap();
+                println!("[{ship_symbol}] orbit");
+                client.orbit_ship(&ship_symbol).await;
 
-                println!("[{ship_name}] extract");
-                Ship::extract_till_full(&configuration, &ship_name).await;
+                println!("[{ship_symbol}] extract");
+                client.extract_till_full(&ship_symbol).await;
             }
         });
 
@@ -71,7 +50,7 @@ async fn main() {
     loop {
         stream.tick().await;
 
-        let m = agents::get_my_agent(&configuration).await.unwrap();
+        let m = client.get_my_agent().await;
         println!("[MAIN] credits={}", m.data.credits)
     }
 }
