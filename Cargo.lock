@@ -131,12 +131,16 @@ name = "auto-space-trader"
 version = "0.1.0"
 dependencies = [
  "async-std",
+ "async-trait",
  "dotenv",
+ "reqwest",
+ "reqwest-middleware",
  "serde",
  "serde-attributes",
  "serde_json",
  "serde_repr",
  "spacedust",
+ "task-local-extensions",
  "tokio",
 ]
 

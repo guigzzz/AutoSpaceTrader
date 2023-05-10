@@ -1,6 +1,7 @@
 use std::{env, time::Duration};
 
 use dotenv::dotenv;
+use reqwest::ClientBuilder;
 use spacedust::{
     apis::{
         agents_api,
@@ -15,6 +16,8 @@ use spacedust::{
 
 use serde::Deserialize;
 use serde_repr::Deserialize_repr;
+
+use crate::limiter::RateLimiter;
 
 #[repr(u16)]
 #[derive(Debug, PartialEq, Deserialize_repr)]
@@ -62,8 +65,13 @@ impl Client {
     pub fn new() -> Self {
         dotenv().ok();
 
+        let client = reqwest_middleware::ClientBuilder::new(ClientBuilder::new().build().unwrap())
+            .with(RateLimiter::new())
+            .build();
+
         let configuration = Configuration {
             bearer_access_token: Some(env::var("TOKEN").unwrap()),
+            client,
             ..Default::default()
         };
 
