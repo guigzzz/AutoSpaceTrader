@@ -116,13 +116,6 @@ impl Client {
         }
     }
 
-    pub async fn is_cargo_full(&self, ship_symbol: &str) -> bool {
-        let cargo = fleet::get_my_ship_cargo(&self.configuration, ship_symbol)
-            .await
-            .unwrap();
-        cargo.data.capacity == cargo.data.units
-    }
-
     pub async fn extract_till_full(&self, ship_symbol: &str) {
         loop {
             let extracted = fleet::extract_resources(
