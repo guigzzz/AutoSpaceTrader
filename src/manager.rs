@@ -45,14 +45,14 @@ impl Manager {
         let ship = self
             .purchase_ship(system_symbol, spacedust::models::ShipType::MiningDrone)
             .await;
-        println!("[MAIN] Purchased ship: {}", ship.symbol);
+        println!("[MANAGER] Purchased ship: {}", ship.symbol);
 
         let asteroid_waypoint = self
             .find_waypoint_for_type(system_symbol, WaypointType::AsteroidField)
             .await
             .unwrap();
         println!(
-            "[MAIN] Found AsteroidField waypoint: {}",
+            "[MANAGER] Found AsteroidField waypoint: {}",
             asteroid_waypoint.symbol
         );
         client

@@ -58,9 +58,14 @@ async fn main() {
 
             println!("[BUYER] Checking for funds");
 
-            let m = client.get_my_agent().await;
             let ships = client.get_my_ships().await;
-            if m.credits > 100_000 && ships.len() < 10 {
+            if ships.len() > 10 {
+                println!("[BUYER] Already have 10 ships, quitting...");
+                return;
+            }
+
+            let m = client.get_my_agent().await;
+            if m.credits > 100_000 {
                 println!("[BUYER] Enough credits for ship, attempting to buy");
                 manager
                     .buy_ship_and_send_mining(&client, current_system.as_str())
