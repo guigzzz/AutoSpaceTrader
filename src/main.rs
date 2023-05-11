@@ -19,7 +19,7 @@ async fn main() {
 
     let drones: Vec<_> = ships
         .iter()
-        .filter(|s| s.frame.symbol == Symbol::Drone)
+        .filter(|s| s.frame.symbol == Symbol::Drone || s.frame.symbol == Symbol::Miner)
         .collect();
 
     for d in &drones {
@@ -79,8 +79,5 @@ async fn main() {
     let mut stream = interval(Duration::from_secs(60));
     loop {
         stream.tick().await;
-
-        let m = client.get_my_agent().await;
-        println!("[MAIN] credits={}", m.credits)
     }
 }

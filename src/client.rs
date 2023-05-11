@@ -165,7 +165,18 @@ impl Client {
             )
             .await;
             match resp {
-                Result::Ok(_) => (),
+                Result::Ok(a) => {
+                    let transaction = a.data.transaction;
+
+                    let context = &self.log_context;
+                    println!(
+                        "[{context}] Sold {}x{} for {} credits. Total credits={}",
+                        transaction.units,
+                        transaction.trade_symbol.as_str(),
+                        transaction.total_price,
+                        a.data.agent.credits
+                    )
+                }
                 Result::Err(e) => {
                     let err: GenericError<SellCargoError> = e.into();
                     let context = &self.log_context;

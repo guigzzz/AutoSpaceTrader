@@ -52,8 +52,8 @@ impl Manager {
             .purchase_ship(system_symbol, spacedust::models::ShipType::OreHound)
             .await;
         println!(
-            "[{}] Manager - Purchased ship: {}",
-            self.log_context, ship.symbol
+            "[{}] Manager - Purchased ship: {} - {:?}",
+            self.log_context, ship.symbol, ship
         );
 
         let asteroid_waypoint = self
