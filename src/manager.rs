@@ -1,17 +1,12 @@
 use std::collections::HashMap;
 
-use spacedust::{
-    apis::{configuration::Configuration, fleet_api, systems_api},
-    models::{
-        self, waypoint_trait::Symbol, PurchaseShipRequest, ShipType, System, SystemWaypoint,
-        Waypoint, WaypointType,
-    },
+use spacedust::models::{
+    self, waypoint_trait::Symbol, ShipType, System, SystemWaypoint, Waypoint, WaypointType,
 };
 
-use crate::{client::Client, configuration::CONFIGURATION};
+use crate::client::Client;
 
 pub struct Manager {
-    configuration: &'static Configuration,
     systems: HashMap<String, System>,
     log_context: String,
     client: Client,
@@ -19,10 +14,11 @@ pub struct Manager {
 
 impl Manager {
     pub async fn new(log_context: &str) -> Self {
-        let configuration = &CONFIGURATION;
-        let systems: HashMap<String, System> = systems_api::get_systems_all(configuration)
+        let client = Client::new(log_context.to_owned());
+
+        let systems: HashMap<String, System> = client
+            .get_systems_all()
             .await
-            .unwrap()
             .iter()
             .map(|s| (s.symbol.to_owned(), s.to_owned()))
             .collect();
@@ -33,18 +29,10 @@ impl Manager {
         );
 
         Self {
-            configuration,
             systems,
             log_context: log_context.to_owned(),
-            client: Client::new(log_context.to_owned()),
+            client,
         }
-    }
-
-    pub async fn get_system_waypoints(&self, system_name: &str) -> Vec<models::Waypoint> {
-        systems_api::get_system_waypoints(self.configuration, system_name, None, None)
-            .await
-            .unwrap()
-            .data
     }
 
     pub async fn buy_ship_and_send_mining(&self, system_symbol: &str) {
@@ -88,7 +76,7 @@ impl Manager {
         system_name: &str,
         waypoint_trait: Symbol,
     ) -> Option<Waypoint> {
-        let waypoints = self.get_system_waypoints(system_name).await;
+        let waypoints = self.client.get_system_waypoints(system_name).await;
 
         waypoints
             .iter()
@@ -102,13 +90,8 @@ impl Manager {
             .await
             .unwrap();
 
-        fleet_api::purchase_ship(
-            self.configuration,
-            Some(PurchaseShipRequest::new(ship_type, shipyard.symbol)),
-        )
-        .await
-        .unwrap()
-        .data
-        .ship
+        self.client
+            .purchase_ship(ship_type, shipyard.symbol.as_str())
+            .await
     }
 }

@@ -6,9 +6,12 @@ use spacedust::{
         agents_api,
         configuration::Configuration,
         fleet_api::{self as fleet},
-        Error,
+        systems_api, Error,
     },
-    models::{Agent, ExtractResourcesRequest, NavigateShipRequest, SellCargoRequest, Ship},
+    models::{
+        self, Agent, ExtractResourcesRequest, NavigateShipRequest, PurchaseShipRequest,
+        SellCargoRequest, Ship, ShipType, System,
+    },
 };
 
 use serde::{de::DeserializeOwned, Deserialize};
@@ -97,8 +100,39 @@ impl Client {
         }
     }
 
+    pub async fn get_systems_all(&self) -> Vec<System> {
+        systems_api::get_systems_all(self.configuration)
+            .await
+            .unwrap()
+    }
+
     pub async fn get_my_agent(&self) -> Box<Agent> {
         agents_api::get_my_agent(self.configuration)
+            .await
+            .unwrap()
+            .data
+    }
+
+    pub async fn purchase_ship(
+        &self,
+        ship_type: ShipType,
+        waypoint_symbol: &str,
+    ) -> Box<models::Ship> {
+        fleet::purchase_ship(
+            self.configuration,
+            Some(PurchaseShipRequest::new(
+                ship_type,
+                waypoint_symbol.to_owned(),
+            )),
+        )
+        .await
+        .unwrap()
+        .data
+        .ship
+    }
+
+    pub async fn get_system_waypoints(&self, system_name: &str) -> Vec<models::Waypoint> {
+        systems_api::get_system_waypoints(self.configuration, system_name, None, None)
             .await
             .unwrap()
             .data
