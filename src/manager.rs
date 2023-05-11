@@ -36,7 +36,7 @@ impl Manager {
             configuration,
             systems,
             log_context: log_context.to_owned(),
-            client: Client::new(),
+            client: Client::new(log_context.to_owned()),
         }
     }
 

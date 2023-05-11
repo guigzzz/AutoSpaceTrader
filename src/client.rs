@@ -1,4 +1,4 @@
-use std::time::Duration;
+use std::{fmt::Debug, time::Duration};
 
 use chrono::DateTime;
 use spacedust::{
@@ -11,17 +11,9 @@ use spacedust::{
     models::{Agent, ExtractResourcesRequest, NavigateShipRequest, SellCargoRequest, Ship},
 };
 
-use serde::Deserialize;
-use serde_repr::Deserialize_repr;
+use serde::{de::DeserializeOwned, Deserialize};
 
 use crate::configuration::CONFIGURATION;
-
-#[repr(u16)]
-#[derive(Debug, PartialEq, Deserialize_repr)]
-pub enum ErrorCode {
-    CooldownConflictError = 4000,
-    ShipCargoFullError = 4228,
-}
 
 #[derive(Debug, PartialEq, Deserialize)]
 #[serde(untagged)]
@@ -31,10 +23,26 @@ pub enum ExtractResourceError {
     Cargo(CargoErrorInner),
 }
 
+#[derive(Debug, PartialEq, Deserialize)]
+#[serde(untagged)]
+#[serde(rename_all = "camelCase")]
+pub enum SellCargoError {
+    NotFoundError(NotFoundErrorInner),
+}
+
+#[derive(Debug, PartialEq, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct NotFoundErrorInner {
+    ship_symbol: String,
+    trade_symbol: String,
+    cargo_units: u64,
+    units_to_remove: u64,
+}
+
 #[derive(Deserialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct GenericErrorInner<T> {
-    code: ErrorCode,
+    code: u16,
     data: T,
     message: String,
 }
@@ -62,12 +70,30 @@ pub struct CargoErrorInner {
 
 pub struct Client {
     configuration: &'static Configuration,
+    log_context: String,
+}
+
+impl<T: Debug, U: DeserializeOwned> From<Error<T>> for GenericError<U> {
+    fn from(value: Error<T>) -> Self {
+        match value {
+            Error::ResponseError(e) => match serde_json::from_str(&e.content) {
+                Result::Ok(v) => v,
+                Result::Err(ser_err) => {
+                    dbg!(e);
+                    dbg!(ser_err);
+                    panic!()
+                }
+            },
+            _ => panic!("{}", dbg!(value)),
+        }
+    }
 }
 
 impl Client {
-    pub fn new() -> Self {
+    pub fn new(log_context: String) -> Self {
         Self {
             configuration: &CONFIGURATION,
+            log_context,
         }
     }
 
@@ -132,13 +158,30 @@ impl Client {
             .unwrap();
 
         for c in cargo.data.inventory {
-            fleet::sell_cargo(
+            let resp = fleet::sell_cargo(
                 self.configuration,
                 ship_symbol,
                 Some(SellCargoRequest::new(c.symbol, c.units)),
             )
-            .await
-            .unwrap();
+            .await;
+            match resp {
+                Result::Ok(_) => (),
+                Result::Err(e) => {
+                    let err: GenericError<SellCargoError> = e.into();
+                    let context = &self.log_context;
+                    match err.error.data {
+                        SellCargoError::NotFoundError(cargo) => {
+                            println!(
+                                "[{context}] Failed to sell cargo. Tried to sell {}x{} but had {}x{}",
+                                cargo.units_to_remove,
+                                cargo.trade_symbol,
+                                cargo.cargo_units,
+                                cargo.trade_symbol
+                            )
+                        }
+                    }
+                }
+            }
         }
     }
 
@@ -167,31 +210,20 @@ impl Client {
 
                     tokio::time::sleep(Duration::from_secs(sleep_seconds)).await;
                 }
-                Result::Err(e) => match e {
-                    Error::ResponseError(e) => {
-                        let err: GenericError<ExtractResourceError> =
-                            match serde_json::from_str(&e.content) {
-                                Result::Ok(v) => v,
-                                Result::Err(ser_err) => {
-                                    dbg!(e);
-                                    dbg!(ser_err);
-                                    panic!()
-                                }
-                            };
+                Result::Err(e) => {
+                    let err: GenericError<ExtractResourceError> = e.into();
 
-                        let sleep_seconds = match err.error.data {
-                            ExtractResourceError::Cooldown { cooldown } => {
-                                cooldown.remaining_seconds
-                            }
-                            ExtractResourceError::Cargo { .. } => return,
-                        };
+                    let sleep_seconds = match err.error.data {
+                        ExtractResourceError::Cooldown { cooldown } => cooldown.remaining_seconds,
+                        ExtractResourceError::Cargo { .. } => return,
+                    };
 
-                        println!("[{ship_symbol}] extraction cooldown, sleeping for {sleep_seconds} seconds");
+                    println!(
+                        "[{ship_symbol}] extraction cooldown, sleeping for {sleep_seconds} seconds"
+                    );
 
-                        tokio::time::sleep(Duration::from_secs(sleep_seconds)).await;
-                    }
-                    _ => panic!(),
-                },
+                    tokio::time::sleep(Duration::from_secs(sleep_seconds)).await;
+                }
             };
         }
     }
@@ -200,6 +232,19 @@ impl Client {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn deserialise_sell_cargo_error() {
+        let str = "{\"error\":{\"message\":\"Failed t COPPER_ORE.\",\"code\":4219,\"data\":{\"shipSymbol\":\"MXZ-3\",\"tradeSymbol\":\"COPPER_ORE\",\"cargoUnits\":0,\"unitsToRemove\":7}}}";
+
+        let err: GenericError<SellCargoError> = serde_json::from_str(str).unwrap();
+
+        match err.error.data {
+            SellCargoError::NotFoundError(cargo) => {
+                assert_eq!(cargo.cargo_units, 0)
+            }
+        }
+    }
 
     #[test]
     fn deserialise_cargo() {

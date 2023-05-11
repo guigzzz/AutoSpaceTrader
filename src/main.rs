@@ -13,7 +13,7 @@ use tokio::time::interval;
 
 #[tokio::main]
 async fn main() {
-    let client = Client::new();
+    let client = Client::new("MAIN".into());
 
     let ships = client.get_my_ships().await;
 
@@ -24,7 +24,7 @@ async fn main() {
 
     for d in &drones {
         let ship_symbol = d.symbol.to_owned();
-        let client = Client::new();
+        let client = Client::new(ship_symbol.to_owned());
 
         tokio::spawn(async move {
             loop {
@@ -49,7 +49,7 @@ async fn main() {
         let manager = Manager::new("BUYER").await;
         println!("[BUYER] Init manager done");
 
-        let client = Client::new();
+        let client = Client::new("BUYER".into());
         let current_system = client.get_ship("MXZ-1").await.nav.system_symbol;
 
         let mut stream = interval(Duration::from_secs(600));
