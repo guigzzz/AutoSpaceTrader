@@ -65,7 +65,7 @@ async fn main() {
             }
 
             let m = client.get_my_agent().await;
-            if m.credits > 100_000 {
+            if m.credits > 165_000 {
                 println!("[BUYER] Enough credits for ship, attempting to buy");
                 manager
                     .buy_ship_and_send_mining(current_system.as_str())

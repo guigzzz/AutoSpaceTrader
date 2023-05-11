@@ -49,7 +49,7 @@ impl Manager {
 
     pub async fn buy_ship_and_send_mining(&self, system_symbol: &str) {
         let ship = self
-            .purchase_ship(system_symbol, spacedust::models::ShipType::MiningDrone)
+            .purchase_ship(system_symbol, spacedust::models::ShipType::OreHound)
             .await;
         println!(
             "[{}] Manager - Purchased ship: {}",
