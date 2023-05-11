@@ -253,6 +253,10 @@ impl Client {
 
                     println!("[{ship_symbol}] extraction cooldown, yield={yld_units}x{yld_symbol}, inventory={units}/{capacity}, sleeping for {sleep_seconds} seconds");
 
+                    if capacity - units < 3 {
+                        return;
+                    }
+
                     tokio::time::sleep(Duration::from_secs(sleep_seconds)).await;
                 }
                 Result::Err(e) => {
