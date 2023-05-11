@@ -1,6 +1,6 @@
 use std::time::Duration;
 
-use chrono::{Date, DateTime, Utc};
+use chrono::DateTime;
 use spacedust::{
     apis::{
         agents_api,
@@ -14,7 +14,7 @@ use spacedust::{
 use serde::Deserialize;
 use serde_repr::Deserialize_repr;
 
-use crate::configuration::ConfigBuilder;
+use crate::configuration::CONFIGURATION;
 
 #[repr(u16)]
 #[derive(Debug, PartialEq, Deserialize_repr)]
@@ -61,13 +61,13 @@ pub struct CargoErrorInner {
 }
 
 pub struct Client {
-    configuration: Configuration,
+    configuration: &'static Configuration,
 }
 
 impl Client {
     pub fn new() -> Self {
         Self {
-            configuration: ConfigBuilder::new_config(),
+            configuration: &CONFIGURATION,
         }
     }
 

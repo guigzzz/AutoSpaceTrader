@@ -8,19 +8,19 @@ use spacedust::{
     },
 };
 
-use crate::{client::Client, configuration::ConfigBuilder};
+use crate::{client::Client, configuration::CONFIGURATION};
 
 pub struct Manager {
-    configuration: Configuration,
+    configuration: &'static Configuration,
     systems: HashMap<String, System>,
     log_context: String,
+    client: Client,
 }
 
 impl Manager {
     pub async fn new(log_context: &str) -> Self {
-        let configuration = ConfigBuilder::new_config();
-
-        let systems: HashMap<String, System> = systems_api::get_systems_all(&configuration)
+        let configuration = &CONFIGURATION;
+        let systems: HashMap<String, System> = systems_api::get_systems_all(configuration)
             .await
             .unwrap()
             .iter()
@@ -36,17 +36,18 @@ impl Manager {
             configuration,
             systems,
             log_context: log_context.to_owned(),
+            client: Client::new(),
         }
     }
 
     pub async fn get_system_waypoints(&self, system_name: &str) -> Vec<models::Waypoint> {
-        systems_api::get_system_waypoints(&self.configuration, system_name, None, None)
+        systems_api::get_system_waypoints(self.configuration, system_name, None, None)
             .await
             .unwrap()
             .data
     }
 
-    pub async fn buy_ship_and_send_mining(&self, client: &Client, system_symbol: &str) {
+    pub async fn buy_ship_and_send_mining(&self, system_symbol: &str) {
         let ship = self
             .purchase_ship(system_symbol, spacedust::models::ShipType::MiningDrone)
             .await;
@@ -63,7 +64,7 @@ impl Manager {
             "[{}] Manager - Found AsteroidField waypoint: {}",
             self.log_context, asteroid_waypoint.symbol
         );
-        client
+        self.client
             .navigate(ship.symbol.as_str(), asteroid_waypoint.symbol.as_str())
             .await;
     }
@@ -102,7 +103,7 @@ impl Manager {
             .unwrap();
 
         fleet_api::purchase_ship(
-            &self.configuration,
+            self.configuration,
             Some(PurchaseShipRequest::new(ship_type, shipyard.symbol)),
         )
         .await

@@ -68,7 +68,7 @@ async fn main() {
             if m.credits > 100_000 {
                 println!("[BUYER] Enough credits for ship, attempting to buy");
                 manager
-                    .buy_ship_and_send_mining(&client, current_system.as_str())
+                    .buy_ship_and_send_mining(current_system.as_str())
                     .await
             } else {
                 println!("[BUYER] Not enough funds");
