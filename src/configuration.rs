@@ -8,10 +8,9 @@ use spacedust::apis::configuration::Configuration;
 
 use crate::limiter::RateLimiter;
 
-struct ConfigBuilder {}
-
-impl ConfigBuilder {
-    fn new_config() -> Configuration {
+lazy_static! {
+    // having a static singleton configuration means that the throttling will apply to any client we instantiate
+    pub static ref CONFIGURATION: Configuration = {
         dotenv().ok();
 
         let retry_policy = ExponentialBackoff::builder().build_with_max_retries(3);
@@ -26,10 +25,5 @@ impl ConfigBuilder {
             client,
             ..Default::default()
         }
-    }
-}
-
-lazy_static! {
-    // having a static singleton configuration means that the throttling will apply to any client we instantiate
-    pub static ref CONFIGURATION: Configuration = ConfigBuilder::new_config();
+    };
 }

@@ -72,35 +72,35 @@ impl Client {
     }
 
     pub async fn get_my_agent(&self) -> Box<Agent> {
-        agents_api::get_my_agent(&self.configuration)
+        agents_api::get_my_agent(self.configuration)
             .await
             .unwrap()
             .data
     }
 
     pub async fn get_my_ships(&self) -> Vec<Ship> {
-        fleet::get_my_ships(&self.configuration, None, None)
+        fleet::get_my_ships(self.configuration, None, None)
             .await
             .unwrap()
             .data
     }
 
     pub async fn get_ship(&self, ship_symbol: &str) -> Box<Ship> {
-        fleet::get_my_ship(&self.configuration, ship_symbol)
+        fleet::get_my_ship(self.configuration, ship_symbol)
             .await
             .unwrap()
             .data
     }
 
     pub async fn dock_ship(&self, ship_symbol: &str) {
-        fleet::dock_ship(&self.configuration, ship_symbol, 0.)
+        fleet::dock_ship(self.configuration, ship_symbol, 0.)
             .await
             .unwrap();
     }
 
     pub async fn navigate(&self, ship_symbol: &str, waypoint_symbol: &str) {
         let resp = fleet::navigate_ship(
-            &self.configuration,
+            self.configuration,
             ship_symbol,
             Some(NavigateShipRequest::new(waypoint_symbol.to_owned())),
         )
@@ -121,19 +121,19 @@ impl Client {
     }
 
     pub async fn orbit_ship(&self, ship_symbol: &str) {
-        fleet::orbit_ship(&self.configuration, ship_symbol, 0)
+        fleet::orbit_ship(self.configuration, ship_symbol, 0)
             .await
             .unwrap();
     }
 
     pub async fn sell_all(&self, ship_symbol: &str) {
-        let cargo = fleet::get_my_ship_cargo(&self.configuration, ship_symbol)
+        let cargo = fleet::get_my_ship_cargo(self.configuration, ship_symbol)
             .await
             .unwrap();
 
         for c in cargo.data.inventory {
             fleet::sell_cargo(
-                &self.configuration,
+                self.configuration,
                 ship_symbol,
                 Some(SellCargoRequest::new(c.symbol, c.units)),
             )
@@ -145,7 +145,7 @@ impl Client {
     pub async fn extract_till_full(&self, ship_symbol: &str) {
         loop {
             let extracted = fleet::extract_resources(
-                &self.configuration,
+                self.configuration,
                 ship_symbol,
                 Some(ExtractResourcesRequest::new()),
             )
