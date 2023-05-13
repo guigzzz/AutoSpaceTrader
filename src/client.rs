@@ -33,6 +33,7 @@ pub enum ExtractResourceError {
 #[serde(rename_all = "camelCase")]
 pub enum SellCargoError {
     NotFoundError(NotFoundErrorInner),
+    NotSellableError(NotSellableErrorInner),
 }
 
 #[derive(Debug, PartialEq, Deserialize)]
@@ -42,6 +43,13 @@ pub struct NotFoundErrorInner {
     trade_symbol: String,
     cargo_units: u64,
     units_to_remove: u64,
+}
+
+#[derive(Debug, PartialEq, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct NotSellableErrorInner {
+    trade_symbol: String,
+    waypoint_symbol: String,
 }
 
 #[derive(Deserialize, Debug)]
@@ -227,6 +235,13 @@ impl Client {
                                 cargo.trade_symbol
                             )
                         }
+                        SellCargoError::NotSellableError(sell) => {
+                            info!(
+                                "[{context}] Failed to sell {}x{} as is not sellable in this market",
+                                c.units,
+                                sell.trade_symbol,
+                            )
+                        }
                     }
                 }
             }
@@ -286,6 +301,20 @@ mod tests {
     use super::*;
 
     #[test]
+    fn deserialise_sell_cargo_error_not_sellable() {
+        let str = "{\"error\":{\"message\":\"Market sell failed. Trade good ANTIMATTER is not available at X1-ZA40-15970B.\",\"code\":4602,\"data\":{\"waypointSymbol\":\"X1-ZA40-15970B\",\"tradeSymbol\":\"ANTIMATTER\"}}}";
+
+        let err: GenericError<SellCargoError> = serde_json::from_str(str).unwrap();
+
+        match err.error.data {
+            SellCargoError::NotFoundError(_) => panic!(),
+            SellCargoError::NotSellableError(e) => {
+                assert_eq!(e.waypoint_symbol, "X1-ZA40-15970B".to_owned())
+            }
+        }
+    }
+
+    #[test]
     fn deserialise_sell_cargo_error() {
         let str = "{\"error\":{\"message\":\"Failed t COPPER_ORE.\",\"code\":4219,\"data\":{\"shipSymbol\":\"MXZ-3\",\"tradeSymbol\":\"COPPER_ORE\",\"cargoUnits\":0,\"unitsToRemove\":7}}}";
 
@@ -295,6 +324,7 @@ mod tests {
             SellCargoError::NotFoundError(cargo) => {
                 assert_eq!(cargo.cargo_units, 0)
             }
+            SellCargoError::NotSellableError(_) => panic!(),
         }
     }
 

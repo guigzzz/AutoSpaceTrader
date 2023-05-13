@@ -2,6 +2,7 @@ mod client;
 mod configuration;
 mod limiter;
 mod manager;
+mod setup;
 
 use log::{info, LevelFilter};
 
@@ -43,10 +44,10 @@ async fn main() {
             .join(", ")
     );
 
-    let drones: Vec<_> = ships
-        .iter()
-        .filter(|s| s.frame.symbol == Symbol::Drone || s.frame.symbol == Symbol::Miner)
-        .collect();
+    let drones: Vec<_> = ships.clone();
+    // .iter()
+    // .filter(|s| s.frame.symbol == Symbol::Drone || s.frame.symbol == Symbol::Miner)
+    // .collect();
 
     let factory = ManagerFactory::new().await;
 

@@ -70,7 +70,7 @@ impl Manager {
             .navigate(ship.symbol.as_str(), asteroid_waypoint.symbol.as_str())
             .await;
 
-        let manager = self.clone();
+        let manager = self.clone();  
         tokio::spawn(async move {
             loop {
                 manager.mine_loop(ship.symbol.as_str()).await;
