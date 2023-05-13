@@ -6,16 +6,13 @@ use spacedust::models::{
 
 use crate::client::Client;
 
-pub struct Manager {
+pub struct ManagerFactory {
     systems: HashMap<String, System>,
-    log_context: String,
-    client: Client,
 }
 
-impl Manager {
-    pub async fn new(log_context: &str) -> Self {
-        let client = Client::new(log_context.to_owned());
-
+impl ManagerFactory {
+    pub async fn new() -> Self {
+        let client = Client::new("MANAGER_FACTORY".to_owned());
         let systems: HashMap<String, System> = client
             .get_systems_all()
             .await
@@ -23,11 +20,26 @@ impl Manager {
             .map(|s| (s.symbol.to_owned(), s.to_owned()))
             .collect();
 
-        println!(
-            "[{log_context}] Manager Init - Found {} systems",
-            systems.len()
-        );
+        println!("[MANAGER_FACTORY] Loaded systems config");
 
+        Self { systems }
+    }
+
+    pub fn get(&self, log_context: &str) -> Manager {
+        Manager::new(log_context, self.systems.clone())
+    }
+}
+
+#[derive(Clone)]
+pub struct Manager {
+    systems: HashMap<String, System>,
+    log_context: String,
+    client: Client,
+}
+
+impl Manager {
+    fn new(log_context: &str, systems: HashMap<String, System>) -> Self {
+        let client = Client::new(log_context.to_owned());
         Self {
             systems,
             log_context: log_context.to_owned(),
@@ -55,6 +67,28 @@ impl Manager {
         self.client
             .navigate(ship.symbol.as_str(), asteroid_waypoint.symbol.as_str())
             .await;
+
+        let manager = self.clone();
+        tokio::spawn(async move {
+            loop {
+                manager.mine_loop(ship.symbol.as_str()).await;
+            }
+        });
+    }
+
+    pub async fn mine_loop(&self, ship_symbol: &str) {
+        let context = &self.log_context;
+        println!("[{context}] docking");
+        self.client.dock_ship(ship_symbol).await;
+
+        println!("[{context}] emptying");
+        self.client.sell_all(ship_symbol).await;
+
+        println!("[{context}] orbit");
+        self.client.orbit_ship(ship_symbol).await;
+
+        println!("[{context}] extract");
+        self.client.extract_till_full(ship_symbol).await;
     }
 
     pub async fn find_waypoint_for_type(

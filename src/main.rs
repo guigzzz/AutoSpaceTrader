@@ -7,46 +7,44 @@ use std::time::Duration;
 
 use client::Client;
 
-use manager::Manager;
+use manager::ManagerFactory;
 use spacedust::models::ship_frame::Symbol;
 use tokio::time::interval;
 
-#[tokio::main]
+#[tokio::main(worker_threads = 1)]
 async fn main() {
     let client = Client::new("MAIN".into());
 
     let ships = client.get_my_ships().await;
+
+    dbg!(ships
+        .iter()
+        .map(|s| s.symbol.to_owned())
+        .collect::<Vec<_>>());
 
     let drones: Vec<_> = ships
         .iter()
         .filter(|s| s.frame.symbol == Symbol::Drone || s.frame.symbol == Symbol::Miner)
         .collect();
 
+    let factory = ManagerFactory::new().await;
+
     for d in &drones {
         let ship_symbol = d.symbol.to_owned();
-        let client = Client::new(ship_symbol.to_owned());
+        let manager = factory.get(&ship_symbol);
 
         tokio::spawn(async move {
             loop {
-                println!("[{ship_symbol}] docking");
-                client.dock_ship(&ship_symbol).await;
-
-                println!("[{ship_symbol}] emptying");
-                client.sell_all(&ship_symbol).await;
-
-                println!("[{ship_symbol}] orbit");
-                client.orbit_ship(&ship_symbol).await;
-
-                println!("[{ship_symbol}] extract");
-                client.extract_till_full(&ship_symbol).await;
+                manager.mine_loop(ship_symbol.as_str()).await;
             }
         });
 
         tokio::time::sleep(Duration::from_secs(5)).await;
     }
 
-    tokio::spawn(async {
-        let manager = Manager::new("BUYER").await;
+    let manager = factory.get("BUYER");
+
+    tokio::spawn(async move {
         println!("[BUYER] Init manager done");
 
         let client = Client::new("BUYER".into());

@@ -71,6 +71,7 @@ pub struct CargoErrorInner {
     ship_symbol: String,
 }
 
+#[derive(Clone)]
 pub struct Client {
     configuration: &'static Configuration,
     log_context: String,
