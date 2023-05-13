@@ -6,6 +6,8 @@ use spacedust::models::{
 
 use crate::client::Client;
 
+use log::info;
+
 pub struct ManagerFactory {
     systems: HashMap<String, System>,
 }
@@ -20,7 +22,7 @@ impl ManagerFactory {
             .map(|s| (s.symbol.to_owned(), s.to_owned()))
             .collect();
 
-        println!("[MANAGER_FACTORY] Loaded systems config");
+        info!("[MANAGER_FACTORY] Loaded systems config");
 
         Self { systems }
     }
@@ -51,7 +53,7 @@ impl Manager {
         let ship = self
             .purchase_ship(system_symbol, spacedust::models::ShipType::OreHound)
             .await;
-        println!(
+        info!(
             "[{}] Manager - Purchased ship: {} - {:?}",
             self.log_context, ship.symbol, ship
         );
@@ -60,7 +62,7 @@ impl Manager {
             .find_waypoint_for_type(system_symbol, WaypointType::AsteroidField)
             .await
             .unwrap();
-        println!(
+        info!(
             "[{}] Manager - Found AsteroidField waypoint: {}",
             self.log_context, asteroid_waypoint.symbol
         );
@@ -78,16 +80,16 @@ impl Manager {
 
     pub async fn mine_loop(&self, ship_symbol: &str) {
         let context = &self.log_context;
-        println!("[{context}] docking");
+        info!("[{context}] docking");
         self.client.dock_ship(ship_symbol).await;
 
-        println!("[{context}] emptying");
+        info!("[{context}] emptying");
         self.client.sell_all(ship_symbol).await;
 
-        println!("[{context}] orbit");
+        info!("[{context}] orbit");
         self.client.orbit_ship(ship_symbol).await;
 
-        println!("[{context}] extract");
+        info!("[{context}] extract");
         self.client.extract_till_full(ship_symbol).await;
     }
 

@@ -3,6 +3,8 @@ mod configuration;
 mod limiter;
 mod manager;
 
+use log::{info, LevelFilter};
+
 use std::time::Duration;
 
 use client::Client;
@@ -13,14 +15,33 @@ use tokio::time::interval;
 
 #[tokio::main(worker_threads = 1)]
 async fn main() {
+    fern::Dispatch::new()
+        .format(|out, message, record| {
+            out.finish(format_args!(
+                "[{} {}] {}",
+                humantime::format_rfc3339(std::time::SystemTime::now()),
+                record.level(),
+                message
+            ))
+        })
+        .level(LevelFilter::Info)
+        .chain(std::io::stdout())
+        .chain(fern::log_file("output.log").unwrap())
+        .apply()
+        .unwrap();
+
     let client = Client::new("MAIN".into());
 
     let ships = client.get_my_ships().await;
 
-    dbg!(ships
-        .iter()
-        .map(|s| s.symbol.to_owned())
-        .collect::<Vec<_>>());
+    info!(
+        "Found ships: {}",
+        ships
+            .iter()
+            .map(|s| s.symbol.to_owned())
+            .collect::<Vec<_>>()
+            .join(", ")
+    );
 
     let drones: Vec<_> = ships
         .iter()
@@ -45,7 +66,7 @@ async fn main() {
     let manager = factory.get("BUYER");
 
     tokio::spawn(async move {
-        println!("[BUYER] Init manager done");
+        info!("[BUYER] Init manager done");
 
         let client = Client::new("BUYER".into());
         let current_system = client.get_ship("MXZ-1").await.nav.system_symbol;
@@ -54,22 +75,22 @@ async fn main() {
         loop {
             stream.tick().await;
 
-            println!("[BUYER] Checking for funds");
+            info!("[BUYER] Checking for funds");
 
             let ships = client.get_my_ships().await;
             if ships.len() > 10 {
-                println!("[BUYER] Already have 10 ships, quitting...");
+                info!("[BUYER] Already have 10 ships, quitting...");
                 return;
             }
 
             let m = client.get_my_agent().await;
             if m.credits > 165_000 {
-                println!("[BUYER] Enough credits for ship, attempting to buy");
+                info!("[BUYER] Enough credits for ship, attempting to buy");
                 manager
                     .buy_ship_and_send_mining(current_system.as_str())
                     .await
             } else {
-                println!("[BUYER] Not enough funds");
+                info!("[BUYER] Not enough funds");
             }
         }
     });

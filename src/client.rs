@@ -14,6 +14,8 @@ use spacedust::{
     },
 };
 
+use log::info;
+
 use serde::{de::DeserializeOwned, Deserialize};
 
 use crate::configuration::CONFIGURATION;
@@ -177,7 +179,7 @@ impl Client {
 
         let eta = arrival - departure;
 
-        println!("[{ship_symbol}] Travelling to {waypoint_symbol}, sleeping {eta}");
+        info!("[{ship_symbol}] Travelling to {waypoint_symbol}, sleeping {eta}");
         tokio::time::sleep(Duration::from_secs(eta.num_seconds() as u64)).await;
     }
 
@@ -204,7 +206,7 @@ impl Client {
                     let transaction = a.data.transaction;
 
                     let context = &self.log_context;
-                    println!(
+                    info!(
                         "[{context}] Sold {}x{} for {} credits. Total credits={}",
                         transaction.units,
                         transaction.trade_symbol.as_str(),
@@ -217,7 +219,7 @@ impl Client {
                     let context = &self.log_context;
                     match err.error.data {
                         SellCargoError::NotFoundError(cargo) => {
-                            println!(
+                            info!(
                                 "[{context}] Failed to sell cargo. Tried to sell {}x{} but had {}x{}",
                                 cargo.units_to_remove,
                                 cargo.trade_symbol,
@@ -252,7 +254,7 @@ impl Client {
 
                     let sleep_seconds = r.data.cooldown.remaining_seconds as u64;
 
-                    println!("[{ship_symbol}] extraction cooldown, yield={yld_units}x{yld_symbol}, inventory={units}/{capacity}, sleeping for {sleep_seconds} seconds");
+                    info!("[{ship_symbol}] extraction cooldown, yield={yld_units}x{yld_symbol}, inventory={units}/{capacity}, sleeping for {sleep_seconds} seconds");
 
                     if capacity - units < 3 {
                         return;
@@ -268,7 +270,7 @@ impl Client {
                         ExtractResourceError::Cargo { .. } => return,
                     };
 
-                    println!(
+                    info!(
                         "[{ship_symbol}] extraction cooldown, sleeping for {sleep_seconds} seconds"
                     );
 
