@@ -182,8 +182,8 @@ impl Client {
         dbg!(&resp);
 
         let route = resp.nav.route;
-        let departure = DateTime::parse_from_rfc3339(route.arrival.as_str()).unwrap();
-        let arrival = DateTime::parse_from_rfc3339(route.departure_time.as_str()).unwrap();
+        let departure = DateTime::parse_from_rfc3339(route.departure_time.as_str()).unwrap();
+        let arrival = DateTime::parse_from_rfc3339(route.arrival.as_str()).unwrap();
 
         let eta = (arrival - departure).num_seconds() as u64;
 
