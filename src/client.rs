@@ -185,10 +185,10 @@ impl Client {
         let departure = DateTime::parse_from_rfc3339(route.arrival.as_str()).unwrap();
         let arrival = DateTime::parse_from_rfc3339(route.departure_time.as_str()).unwrap();
 
-        let eta = arrival - departure;
+        let eta = (arrival - departure).num_seconds() as u64;
 
         info!("[{ship_symbol}] Travelling to {waypoint_symbol}, sleeping {eta}");
-        tokio::time::sleep(Duration::from_secs(eta.num_seconds() as u64)).await;
+        tokio::time::sleep(Duration::from_secs(eta)).await;
     }
 
     pub async fn orbit_ship(&self, ship_symbol: &str) {
