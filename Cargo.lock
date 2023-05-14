@@ -148,6 +148,7 @@ dependencies = [
  "humantime",
  "lazy_static",
  "log",
+ "rand",
  "reqwest",
  "reqwest-middleware",
  "reqwest-retry",
