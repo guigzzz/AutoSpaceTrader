@@ -73,7 +73,7 @@ async fn main() {
             info!("[BUYER] Checking for funds");
 
             let ships = client.get_my_ships().await;
-            if ships.len() > 10 {
+            if ships.len() >= 10 {
                 info!("[BUYER] Already have 10 ships, quitting...");
                 return;
             }
