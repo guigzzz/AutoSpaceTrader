@@ -8,6 +8,7 @@ use crate::client::Client;
 
 use log::info;
 
+#[derive(Clone)]
 pub struct ManagerFactory {
     systems: HashMap<String, System>,
 }
@@ -49,7 +50,7 @@ impl Manager {
         }
     }
 
-    pub async fn buy_ship_and_send_mining(&self, system_symbol: &str) {
+    pub async fn buy_ship_and_send_mining(&self, factory: &ManagerFactory, system_symbol: &str) {
         let ship = self
             .purchase_ship(system_symbol, spacedust::models::ShipType::OreHound)
             .await;
@@ -70,7 +71,7 @@ impl Manager {
             .navigate(ship.symbol.as_str(), asteroid_waypoint.symbol.as_str())
             .await;
 
-        let manager = self.clone();  
+        let manager = factory.get(ship.symbol.as_str());
         tokio::spawn(async move {
             loop {
                 manager.mine_loop(ship.symbol.as_str()).await;
@@ -130,4 +131,98 @@ impl Manager {
             .purchase_ship(ship_type, shipyard.symbol.as_str())
             .await
     }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use futures::StreamExt;
+    use spacedust::models::{
+        ship_module::Symbol,
+        ship_mount::{self},
+    };
+
+    #[tokio::test]
+    async fn test() {
+        let client = Client::new("bla".into());
+
+        let ships = client.get_my_ships().await;
+
+        println!(
+            "{}",
+            ships
+                .iter()
+                .map(|s| format!(
+                    "{}-{}",
+                    s.symbol,
+                    s.mounts
+                        .iter()
+                        .find(|s| s.symbol == ship_mount::Symbol::MiningLaserI
+                            || s.symbol == ship_mount::Symbol::MiningLaserIi)
+                        .unwrap()
+                        .name
+                ))
+                .collect::<Vec<_>>()
+                .join(", ")
+        )
+    }
+
+    // #[tokio::test]
+    // async fn test_manager() {
+    //     init_logging();
+
+    //     let factory = ManagerFactory::new().await;
+
+    //     let manager = factory.get("TEST");
+
+    //     let eligible_waypoints: Vec<_> = manager
+    //         .systems
+    //         .iter()
+    //         .filter_map(|(_, system)| {
+    //             system
+    //                 .waypoints
+    //                 .iter()
+    //                 .find(|w| w.r#type == WaypointType::AsteroidField)
+    //                 .map(|w| (system.symbol.to_owned(), w))
+    //         })
+    //         .collect();
+
+    //     info!("Found {} asteroid fields", eligible_waypoints.len());
+
+    //     let w: Vec<_> = futures::stream::iter(eligible_waypoints)
+    //         .map()
+    //         .filter(|(system_symbol, waypoint)| async {
+    //             let client = Client::new("TEST".into());
+
+    //             let waypoints = client.get_system_waypoints(system_symbol).await;
+
+    //             let waypoint = waypoints
+    //                 .iter()
+    //                 .find(|w| w.symbol == waypoint.symbol)
+    //                 .unwrap();
+
+    //             waypoint
+    //                 .traits
+    //                 .iter()
+    //                 .any(|w| w.symbol == Symbol::Marketplace)
+    //         })
+    //         .collect()
+    //         .await;
+    // }
+
+    // fn init_logging() {
+    //     fern::Dispatch::new()
+    //         .format(|out, message, record| {
+    //             out.finish(format_args!(
+    //                 "[{} {}] {}",
+    //                 humantime::format_rfc3339(std::time::SystemTime::now()),
+    //                 record.level(),
+    //                 message
+    //             ))
+    //         })
+    //         .level(log::LevelFilter::Info)
+    //         .chain(std::io::stdout())
+    //         .apply()
+    //         .unwrap();
+    // }
 }

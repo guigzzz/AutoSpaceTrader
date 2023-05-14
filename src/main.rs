@@ -11,7 +11,6 @@ use std::time::Duration;
 use client::Client;
 
 use manager::ManagerFactory;
-use spacedust::models::ship_frame::Symbol;
 use tokio::time::interval;
 
 #[tokio::main(worker_threads = 1)]
@@ -44,14 +43,9 @@ async fn main() {
             .join(", ")
     );
 
-    let drones: Vec<_> = ships.clone();
-    // .iter()
-    // .filter(|s| s.frame.symbol == Symbol::Drone || s.frame.symbol == Symbol::Miner)
-    // .collect();
-
     let factory = ManagerFactory::new().await;
 
-    for d in &drones {
+    for d in &ships {
         let ship_symbol = d.symbol.to_owned();
         let manager = factory.get(&ship_symbol);
 
@@ -88,7 +82,7 @@ async fn main() {
             if m.credits > 165_000 {
                 info!("[BUYER] Enough credits for ship, attempting to buy");
                 manager
-                    .buy_ship_and_send_mining(current_system.as_str())
+                    .buy_ship_and_send_mining(&factory, current_system.as_str())
                     .await
             } else {
                 info!("[BUYER] Not enough funds");
