@@ -46,6 +46,10 @@ async fn main() {
     let factory = ManagerFactory::new().await;
 
     for d in &ships {
+        if d.symbol.ends_with("-1") {
+            info!("Skipping command ship...")
+        }
+
         let ship_symbol = d.symbol.to_owned();
         let manager = factory.get(&ship_symbol);
 
