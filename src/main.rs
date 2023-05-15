@@ -47,7 +47,7 @@ async fn main() {
 
     for d in &ships {
         if d.symbol.ends_with("-1") {
-            info!("Skipping command ship...")
+            info!("Skipping command ship...");
             continue;
         }
 
