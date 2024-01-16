@@ -2,11 +2,32 @@ use std::env;
 
 use dotenv::dotenv;
 use lazy_static::lazy_static;
-use reqwest::ClientBuilder;
+use reqwest::{header::HeaderValue, ClientBuilder, Request, Response};
+use reqwest_middleware::{Middleware, Next, Result};
 use reqwest_retry::{policies::ExponentialBackoff, RetryTransientMiddleware};
 use spacedust::apis::configuration::Configuration;
+use task_local_extensions::Extensions;
 
 use crate::limiter::RateLimiter;
+
+pub struct ContentLengthFixMiddleware;
+
+#[async_trait::async_trait]
+impl Middleware for ContentLengthFixMiddleware {
+    async fn handle(
+        &self,
+        mut req: Request,
+        extensions: &mut Extensions,
+        next: Next<'_>,
+    ) -> Result<Response> {
+        if req.body().is_none() && !req.headers().contains_key("content-length") {
+            req.headers_mut()
+                .append("content-length", HeaderValue::from_static("0"));
+        }
+
+        next.run(req, extensions).await
+    }
+}
 
 pub struct ConfigurationFactory {}
 
@@ -17,6 +38,7 @@ impl ConfigurationFactory {
         let client = reqwest_middleware::ClientBuilder::new(ClientBuilder::new().build().unwrap())
             .with(RateLimiter::new())
             .with(RetryTransientMiddleware::new_with_policy(retry_policy))
+            .with(ContentLengthFixMiddleware)
             .build();
 
         Configuration {

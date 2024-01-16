@@ -7,7 +7,7 @@ use spacedust::{
         configuration::Configuration, contracts_api, default_api::register, fleet_api, systems_api,
     },
     models::{
-        waypoint_trait::Symbol, NavigateShipRequest, PurchaseShipRequest, RegisterRequest,
+        NavigateShipRequest, PurchaseShipRequest, RegisterRequest, WaypointTraitSymbol,
         WaypointType,
     },
 };
@@ -22,7 +22,7 @@ impl Setup {
         let agent = register(
             &Configuration::new(),
             Some(RegisterRequest::new(
-                spacedust::models::register_request::Faction::Cosmic,
+                spacedust::models::FactionSymbol::Cosmic,
                 username.to_string(),
             )),
         )
@@ -34,18 +34,24 @@ impl Setup {
 
         let configuration = &ConfigurationFactory::get_config(agent.data.token.as_str());
 
-        let contract_ids: Vec<_> = contracts_api::get_contracts(configuration, None, None)
+        let contracts: Vec<_> = contracts_api::get_contracts(configuration, None, None)
             .await
             .unwrap()
-            .data
-            .iter()
-            .map(|c| c.id.to_owned())
-            .collect();
-        info!("[SETUP] Found {} contracts", contract_ids.len());
+            .data;
+        info!("[SETUP] Found {} contracts", contracts.len());
+        for contract in contracts.iter() {
+            info!(
+                "[SETUP] Contract {}: {}, {}, {}",
+                contract.id,
+                contract.terms.deadline,
+                contract.terms.payment.on_accepted,
+                contract.terms.payment.on_fulfilled
+            )
+        }
 
-        for id in contract_ids {
-            info!("[SETUP] Accepting contract {}", id);
-            contracts_api::accept_contract(configuration, id.as_str(), 0)
+        for contract in contracts {
+            info!("[SETUP] Accepting contract {}", contract.id);
+            contracts_api::accept_contract(configuration, contract.id.as_str())
                 .await
                 .unwrap();
         }
@@ -74,15 +80,30 @@ impl Setup {
         let system = ship.nav.system_symbol.as_str();
         info!("[SETUP] Home system is {system}");
 
-        let waypoints = systems_api::get_system_waypoints(configuration, system, None, None)
-            .await
-            .unwrap()
-            .data;
+        let waypoints =
+            systems_api::get_system_waypoints(configuration, system, None, None, None, None)
+                .await
+                .unwrap()
+                .data;
 
-        let shipyard = waypoints
-            .iter()
-            .find(|w| w.traits.iter().any(|t| t.symbol == Symbol::Shipyard))
-            .unwrap();
+        let shipyard = waypoints.iter().find(|w| {
+            w.traits
+                .iter()
+                .any(|t| t.symbol == WaypointTraitSymbol::Shipyard)
+        });
+
+        let shipyard = match shipyard {
+            None => panic!(
+                "Failed to find shipyard in system {system}. Waypoints were: {}",
+                waypoints
+                    .iter()
+                    .map(|w| w.symbol.clone())
+                    .collect::<Vec<_>>()
+                    .join(", ")
+            ),
+            Some(s) => s,
+        };
+
         info!("[SETUP] Found shipyard: {}", shipyard.symbol);
 
         loop {

@@ -10,7 +10,7 @@ use spacedust::{
     },
     models::{
         self, Agent, ExtractResourcesRequest, NavigateShipRequest, PurchaseShipRequest,
-        SellCargoRequest, Ship, ShipType, System,
+        SellCargoRequest, Ship, ShipType, System, TradeSymbol,
     },
 };
 
@@ -112,9 +112,10 @@ impl Client {
     }
 
     pub async fn get_systems_all(&self) -> Vec<System> {
-        systems_api::get_systems_all(self.configuration)
+        systems_api::get_systems(self.configuration, None, None)
             .await
             .unwrap()
+            .data
     }
 
     pub async fn get_my_agent(&self) -> Box<Agent> {
@@ -143,7 +144,7 @@ impl Client {
     }
 
     pub async fn get_system_waypoints(&self, system_name: &str) -> Vec<models::Waypoint> {
-        systems_api::get_system_waypoints(self.configuration, system_name, None, None)
+        systems_api::get_system_waypoints(self.configuration, system_name, None, None, None, None)
             .await
             .unwrap()
             .data
@@ -164,7 +165,7 @@ impl Client {
     }
 
     pub async fn dock_ship(&self, ship_symbol: &str) {
-        fleet::dock_ship(self.configuration, ship_symbol, 0.)
+        fleet::dock_ship(self.configuration, ship_symbol)
             .await
             .unwrap();
     }
@@ -192,7 +193,7 @@ impl Client {
     }
 
     pub async fn orbit_ship(&self, ship_symbol: &str) {
-        fleet::orbit_ship(self.configuration, ship_symbol, 0)
+        fleet::orbit_ship(self.configuration, ship_symbol)
             .await
             .unwrap();
     }
@@ -264,7 +265,7 @@ impl Client {
                     let capacity = cargo.capacity;
 
                     let yld = r.data.extraction.r#yield;
-                    let yld_symbol = yld.symbol;
+                    let yld_symbol = yld.symbol.to_string();
                     let yld_units = yld.units;
 
                     let sleep_seconds = r.data.cooldown.remaining_seconds as u64;

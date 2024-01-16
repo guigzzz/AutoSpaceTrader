@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use spacedust::models::{
-    self, waypoint_trait::Symbol, ShipType, System, SystemWaypoint, Waypoint, WaypointType,
+    self, ShipType, System, SystemWaypoint, Waypoint, WaypointTraitSymbol, WaypointType,
 };
 
 use crate::client::Client;
@@ -104,26 +104,26 @@ impl Manager {
         system
             .waypoints
             .iter()
+            .find(|&w| w.r#type == waypoint_type)
             .cloned()
-            .find(|w| w.r#type == waypoint_type)
     }
 
     pub async fn find_waypoint_for_trait(
         &self,
         system_name: &str,
-        waypoint_trait: Symbol,
+        waypoint_trait: WaypointTraitSymbol,
     ) -> Option<Waypoint> {
         let waypoints = self.client.get_system_waypoints(system_name).await;
 
         waypoints
             .iter()
+            .find(|&w| w.traits.iter().any(|t| t.symbol == waypoint_trait))
             .cloned()
-            .find(|w| w.traits.iter().any(|t| t.symbol == waypoint_trait))
     }
 
     pub async fn purchase_ship(&self, system_name: &str, ship_type: ShipType) -> Box<models::Ship> {
         let shipyard = self
-            .find_waypoint_for_trait(system_name, Symbol::Shipyard)
+            .find_waypoint_for_trait(system_name, WaypointTraitSymbol::Shipyard)
             .await
             .unwrap();
 
