@@ -43,7 +43,7 @@ async fn main() {
             .join(", ")
     );
 
-    let factory = ManagerFactory::new().await;
+    let factory = ManagerFactory::new();
 
     for d in &ships {
         if d.symbol.ends_with("-1") {

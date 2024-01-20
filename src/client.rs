@@ -10,7 +10,7 @@ use spacedust::{
     },
     models::{
         self, Agent, ExtractResourcesRequest, NavigateShipRequest, PurchaseShipRequest,
-        SellCargoRequest, Ship, ShipType, System, TradeSymbol,
+        SellCargoRequest, Ship, ShipType,
     },
 };
 
@@ -109,13 +109,6 @@ impl Client {
             configuration: &CONFIGURATION,
             log_context,
         }
-    }
-
-    pub async fn get_systems_all(&self) -> Vec<System> {
-        systems_api::get_systems(self.configuration, None, None)
-            .await
-            .unwrap()
-            .data
     }
 
     pub async fn get_my_agent(&self) -> Box<Agent> {

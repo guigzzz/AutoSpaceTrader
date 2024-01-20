@@ -1,50 +1,32 @@
-use std::collections::HashMap;
-
-use spacedust::models::{
-    self, ShipType, System, SystemWaypoint, Waypoint, WaypointTraitSymbol, WaypointType,
-};
+use spacedust::models::{self, ShipType, Waypoint, WaypointTraitSymbol, WaypointType};
 
 use crate::client::Client;
 
 use log::info;
 
 #[derive(Clone)]
-pub struct ManagerFactory {
-    systems: HashMap<String, System>,
-}
+pub struct ManagerFactory {}
 
 impl ManagerFactory {
-    pub async fn new() -> Self {
-        let client = Client::new("MANAGER_FACTORY".to_owned());
-        let systems: HashMap<String, System> = client
-            .get_systems_all()
-            .await
-            .iter()
-            .map(|s| (s.symbol.to_owned(), s.to_owned()))
-            .collect();
-
-        info!("[MANAGER_FACTORY] Loaded systems config");
-
-        Self { systems }
+    pub fn new() -> Self {
+        Self {}
     }
 
     pub fn get(&self, log_context: &str) -> Manager {
-        Manager::new(log_context, self.systems.clone())
+        Manager::new(log_context)
     }
 }
 
 #[derive(Clone)]
 pub struct Manager {
-    systems: HashMap<String, System>,
     log_context: String,
     client: Client,
 }
 
 impl Manager {
-    fn new(log_context: &str, systems: HashMap<String, System>) -> Self {
+    fn new(log_context: &str) -> Self {
         let client = Client::new(log_context.to_owned());
         Self {
-            systems,
             log_context: log_context.to_owned(),
             client,
         }
@@ -98,11 +80,10 @@ impl Manager {
         &self,
         system_name: &str,
         waypoint_type: WaypointType,
-    ) -> Option<SystemWaypoint> {
-        let system = self.systems.get(system_name).unwrap();
+    ) -> Option<Waypoint> {
+        let waypoints = self.client.get_system_waypoints(system_name).await;
 
-        system
-            .waypoints
+        waypoints
             .iter()
             .find(|&w| w.r#type == waypoint_type)
             .cloned()
@@ -136,11 +117,7 @@ impl Manager {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use futures::StreamExt;
-    use spacedust::models::{
-        ship_module::Symbol,
-        ship_mount::{self},
-    };
+    use spacedust::models::ship_mount::{self};
 
     #[tokio::test]
     async fn test() {
